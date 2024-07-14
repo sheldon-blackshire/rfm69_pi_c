@@ -7,27 +7,7 @@
 extern "C" {
 #endif
 
-#define RFM69_FSTEP 61.03515625f
-
 #define RFM69_MAX_FIFO_BYTES 66
-#define RFM69_INVALID_PIN -1
-#define RFM69_MAX_DIO_PINS 6
-
-#define RFM69_MODULATION_DATA_MODE_PACKET 0x00
-#define RFM69_MODULATION_DATA_MODE_CONT_SYNTH 0x02
-#define RFM69_MODULATION_DATA_MODE_CONT_NO_SYNTH 0x03
-
-#define RFM69_MODULATION_TYPE_FSK 0x00
-#define RFM69_MODULATION_TYPE_OOK 0x01
-
-#define RFM69_MODULATION_SHAPE_FSK_NONE 0x00
-#define RFM69_MODULATION_SHAPE_FSK_GAUSS_BT_1_0 0x01
-#define RFM69_MODULATION_SHAPE_FSK_GAUSS_BT_0_5 0x02
-#define RFM69_MODULATION_SHAPE_FSK_GAUSS_BT_0_3 0x03
-
-#define RFM69_MODULATION_SHAPE_OOK_NONE 0x00
-#define RFM69_MODULATION_SHAPE_OOK_BR 0x01
-#define RFM69_MODULATION_SHAPE_OOK_BR2 0x02
 
 /** @enum rfm69_bit_rate
  *  @brief Preset bit rates from Table 9 of the rfm69 datasheet.
@@ -59,7 +39,7 @@ enum rfm69_bit_rate {
   RFM69_BITRATE_300_KBPS = (0x00 << 8 | 0x6B),  
 };
 
-enum sx1231_bandwidth_fsk {
+enum rfm69_bandwidth_fsk {
   RFM69_BW_FSK_2_6_khz = ((0b10 << 3) | 7),    //   2.6 khz
   RFM69_BW_FSK_3_1_khz = ((0b01 << 3) | 7),    //   3.1 khz
   RFM69_BW_FSK_3_9_khz = ((0b00 << 3) | 7),    //   3.9 khz
@@ -86,7 +66,7 @@ enum sx1231_bandwidth_fsk {
   RFM69_BW_FSK_500_0_khz = ((0b00 << 3) | 0)   // 500.0 khz
 };
 
-enum sx1231_bandwidth_ook {
+enum rfm69_bandwidth_ook {
   RFM69_BW_OOK_1_3_khz = ((0b10 << 3) | 7),
   RFM69_BW_OOK_1_6_khz = ((0b01 << 3) | 7),
   RFM69_BW_OOK_2_0_khz = ((0b00 << 3) | 7),
@@ -138,38 +118,6 @@ enum rfm69_dc_cancel_prxbw {
   RFM69_DC_CANCEL_PRXBW_0_125 = (0b111 << 5)  //  0.125 %
 };
 
-#define RFM69_DAGC_NORMAL 0x00
-#define RFM69_DAGC_IMPROVED_LOWBETAON 0x20
-#define RFM69_DAGC_IMPROVED_LOWBETAOFF 0x30
-
-#define RFM69_PACKETCONFIG1_PACKETFORMAT_FIXED 0x00
-#define RFM69_PACKETCONFIG1_PACKETFORMAT_VARIABLE 0x01
-
-#define RFM69_PACKETCONFIG1_ENCODING_NONE 0x00
-#define RFM69_PACKETCONFIG1_ENCODING_MANCHESTER 0x01
-#define RFM69_PACKETCONFIG1_ENCODING_WHITENING 0x02
-
-#define RFM69_PACKETCONFIG1_CRC_OFF 0x00
-#define RFM69_PACKETCONFIG1_CRC_ON 0x01
-
-#define RFM69_PACKETCONFIG1_FILTER_BAD_CRC_ON 0x00
-#define RFM69_PACKETCONFIG1_FILTER_BAD_CRC_OFF 0x01
-
-#define RFM69_PACKETCONFIG1_ADDRESSFILTERING_NONE 0x00
-#define RFM69_PACKETCONFIG1_ADDRESSFILTERING_NODE 0x01
-#define RFM69_PACKETCONFIG1_ADDRESSFILTERING_NODE_BC 0x02
-
-
-// RFM69_REG_3D_PACKETCONFIG2
-#define RFM69_PACKETCONFIG2_INTERPACKETRXDELAY 0xf0
-#define RFM69_PACKETCONFIG2_DO_RESTART_RX 0x01
-#define RFM69_PACKETCONFIG2_DONT_RESTART_RX 0x00
-#define RFM69_PACKETCONFIG2_AUTO_RX_RESTART_ON 0x01
-#define RFM69_PACKETCONFIG2_AUTO_RX_RESTART_OFF 0x00
-#define RFM69_PACKETCONFIG2_AES_ON 0x01
-#define RFM69_PACKETCONFIG2_AES_OFF 0x00
-
-
 enum rfm69_modulation {
     RFM69_MODULATION_FSK = 0,
     RFM69_MODULATION_OOK
@@ -192,22 +140,46 @@ enum rfm69_modulatuion_shaping {
 };
 
 struct rfm69_config {
-	/* Frequency in Hz to use for transceiving */
-	uint32_t frequency;
-	uint32_t frequency_deviation;
+	/** 
+   * @brief Center frequency (Hz) to use for rx&tx 
+   * @note The RFM69 transceiver module supports the 315 MHz, 
+   * 433 MHz, 868 MHz, and 915 MHz bands.
+   * @warning The RFM69 isn't tuned for all of the supported bands. HopeRF makes
+   * different variants for each of the bands. Please ensure you are using the 
+   * module that matches your desired center frequency. 
+  */
+	uint32_t center_freq_hz;
+
+  /**
+   * @brief The absolute difference (Hz) between the center frequency of signal
+   * and the max or min modulated frequency.  
+   * @note This parameter is only valid during FSK transmission
+   * @note Modulation in this context means to encoding information
+   * on one carrier wave by changing its frequency.
+   * @warning To ensure proper modulation, Fdev + BR/2 <= 500 KHz
+   */
+	uint32_t freq_deviation_hz;
 
     union {
-        enum sx1231_bandwidth_ook ook;
-        enum sx1231_bandwidth_fsk fsk;
+        enum rfm69_bandwidth_ook ook;
+        enum rfm69_bandwidth_fsk fsk;
     } bw;
 
+  /**
+   * @brief Bitrate: Rate at which bits are shifted out of the radio using
+   * a specified modulation technique. 
+   * @warning Bit rate matching between the transmitter and receiver must
+   * be better than 6.5%. If the bit rates aren't the same, there are limits 
+   * to the number of consecutive 1s and 0s the receiver can correctly receive.
+   * Consult Section 3.4.13 of the datasheet for more information.
+   */
     enum rfm69_bit_rate br;
     enum rfm69_dc_cancel_prxbw dcc;
     enum rfm69_modulation modulation;
     enum rfm69_data_mode mode;
     enum rfm69_modulatuion_shaping shaping;
 
-    uint8_t sync_words[6];
+  uint8_t sync_words[6];
 	uint8_t preamble_length;
 	uint8_t payload_length;
 	uint8_t power_level;
@@ -256,7 +228,9 @@ int rfm69_receive(
 
 /**
  * @typedef rfm69_idle()
- * @brief Callback API for placing the transceiver in idle mode
+ * @brief Places the transceiver in idle mode, cancelling any receptions
+ * or transmissions in progress. 
+ * @note This places the transceiver in its lowest power state.
  */
 int rfm69_idle(void);
 
