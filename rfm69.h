@@ -9,6 +9,10 @@ extern "C" {
 
 #define RFM69_MAX_FIFO_BYTES 66
 
+/**  */
+struct rfm69_device;
+
+
 /** @enum rfm69_bit_rate
  *  @brief Preset bit rates from Table 9 of the rfm69 datasheet.
  *  @note In packet/cont mode with Gaussian filtering enabled, the bit
@@ -189,6 +193,13 @@ struct rfm69_config {
 };
 
 struct rfm69_pins {
+    /** @brief SPI bus number (0 or 1).
+     *  SPI0 (MOSI:GPIO38 MISO:GPIO35 CLK:GPIO40)
+     *  SPI1 (MOSI:GPIO10 MISO:GPIO09 CLK:GPIO11)
+     *  @note This parameter is required 
+    */
+    int spi_bus;
+    int spi_cs;
     int reset;
     int dio0;
     int dio1;
@@ -201,53 +212,63 @@ struct rfm69_pins {
 /**
  * @typedef sub_ghz_tx_cb()
  * @brief Callback API for transmitting data asynchronously
- *
+ * @param device
  */
-typedef void (*rfm69_tx_cb)(void);
+typedef void (*rfm69_tx_cb)(struct rfm69_device* dev);
 
 /**
  * @typedef rfm69_recv_cb()
  * @brief Callback API for receiving data asynchronously
+ * @param device
  * @param data
  * @param size
  * @param rssi
  */
-typedef void (*rfm69_rx_cb)(uint8_t* data, uint16_t size, int16_t rssi);
+typedef void (*rfm69_rx_cb)(struct rfm69_device* dev, uint8_t* data, uint16_t size, int16_t rssi);
 
 /**
  * @brief Initializes the transceiver and places it in low power mode.
  * @param pins
+ * @returns Pointer to the rfm69 device structure on success, otherwise NULL
  */
-int rfm69_init(const struct rfm69_pins* pins);
+struct rfm69_device* rfm69_init(const struct rfm69_pins* pins);
 
 /**
  * @brief Callback API for sending data
+ * @param device
  * @param data
  * @param size
  * @param config
  * @param callback
  */
-int rfm69_transmit(uint8_t* data, uint32_t size,
-    const struct rfm69_config* config, rfm69_tx_cb callback);
+int rfm69_transmit(struct rfm69_device* device, 
+                   uint8_t* data, uint32_t size,
+                   const struct rfm69_config* config, 
+                   rfm69_tx_cb callback);
 
 /**
  * @brief Callback API for receiving data
+ * @param device
  * @param config
  * @param callback
  */
-int rfm69_receive(const struct rfm69_config* config, rfm69_rx_cb callback);
+int rfm69_receive(struct rfm69_device* device,
+                  const struct rfm69_config* config, 
+                  rfm69_rx_cb callback);
 
 /**
  * @brief Places the transceiver in idle mode, cancelling any receptions
  * or transmissions in progress.
+ * @param device
  * @note This places the transceiver in its lowest power state.
  */
-int rfm69_idle(void);
+int rfm69_idle(struct rfm69_device* device);
 
 /**
  * @brief Prints the rfm69's register table to stdout
+ * @param device
  */
-int rfm69_print_registers(void);
+int rfm69_print_registers(struct rfm69_device* device);
 
 #ifdef __cplusplus
 }

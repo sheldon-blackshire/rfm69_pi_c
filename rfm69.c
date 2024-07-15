@@ -120,3 +120,12 @@ static int rfm69_fifo_transaction(uint8_t* buffer, uint8_t size) {
 
     return size - 1;
 }
+
+
+int rfm69_init(const struct rfm69_pins* pins) {
+    if(pins == NULL) { return -EINVAL; }
+    if(pins->reset < 0) { return - EINVAL; }
+    if(pins->spi_bus < 0 || pins->spi_bus > 1) {return -EINVAL;}
+
+    return NULL; /** todo */
+}
