@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 #define RFM69_MAX_FIFO_BYTES 66
+#define RFM69_SPI_BUS_CLOCK_HZ 10000000
 
 /**  */
 struct rfm69_device;
