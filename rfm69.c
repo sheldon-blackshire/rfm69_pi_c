@@ -185,7 +185,7 @@ static int rfm69_set_mode(uint8_t mode) {
      * (quasi immediate from all modes except from Tx). 
      */
     int start = millis();
-    while(true) {
+    while ((millis() - start) < 1000) {
         uint8_t reg_irq_flags1;
         ret = rfm69_read_reg(RFM69_REG_27_IRQFLAGS1, &reg_irq_flags1);
         if(ret < 0){
@@ -194,12 +194,11 @@ static int rfm69_set_mode(uint8_t mode) {
         if(reg_irq_flags1 & RFM69_IRQFLAGS1_MODEREADY){
             return 0;
         }
-        /** One second is an eternity for the mode flag to be set. If this timeout
-         * occurs we have serious problems. */
-        if((millis() - start) > 1000){
-            return -ETIMEDOUT;
-        }
     }
+
+    /** One second is an eternity for the mode flag to be set. If this timeout
+     * occurs we have serious problems. */
+    return -ETIMEDOUT;
 }
 
 static int rfm69_set_rx(void) {
@@ -264,7 +263,7 @@ int rfm69_init(const struct rfm69_pins* pins) {
 
     int ret = 0;
     wiringPiSetup();
-    wiringPiSPISetup(self.pins->spi_bus, RFM69_SPI_BUS_CLOCK_HZ);
+    wiringPiSPISetup(self.pins.spi_bus, RFM69_SPI_BUS_CLOCK_HZ);
     
     ret = wiringPiSetupGpio();
     if(ret < 0){
@@ -287,7 +286,7 @@ int rfm69_init(const struct rfm69_pins* pins) {
         printf("can't read id %d", ret);
     }
 
-    printf("read_id: %02x\n", );
+    printf("read_id: %02x\n", silicon);
 
     return &self; 
 }
