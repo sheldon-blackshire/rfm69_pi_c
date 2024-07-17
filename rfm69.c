@@ -255,9 +255,9 @@ static int rfm69_reset(int pin) {
 }
 
 struct rfm69_device* rfm69_init(const struct rfm69_pins *pins) {
-    if(pins == NULL) { return -EINVAL; }
-    if(pins->reset < 0) { return - EINVAL; }
-    if(pins->spi_bus < 0 || pins->spi_bus > 1) {return -EINVAL;}
+    if(pins == NULL) { return NULL; }
+    if(pins->reset < 0) { return NULL; }
+    if(pins->spi_bus < 0 || pins->spi_bus > 1) {return NULL;}
 
     self.pins = *pins;
 
