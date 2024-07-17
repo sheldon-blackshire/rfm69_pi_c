@@ -16,5 +16,4 @@ add_executable(app main.c)
 # Add souce files to the executable target <app>
 target_sources(app PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/rfm69.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/example2.c
 )
