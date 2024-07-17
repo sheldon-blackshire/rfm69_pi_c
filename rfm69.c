@@ -6,8 +6,8 @@
  */
 
 #include <errno.h>
-#include <rfm69.h>
-#include <rfm69_priv.h>
+#include "rfm69.h"
+#include "rfm69_priv.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <wiringPi.h>
@@ -174,7 +174,7 @@ static int rfm69_set_mode(uint8_t mode) {
     reg_op_mode &= ~RFM69_OPMODE_MODE;
     reg_op_mode |= (mode & RFM69_OPMODE_MODE);
 
-    ret = rfm69_write_reg(RFM69_REG_01_OPMODE, &reg_op_mode);
+    ret = rfm69_write_reg(RFM69_REG_01_OPMODE, reg_op_mode);
     if(ret < 0){
         return -EIO;
     }
@@ -254,7 +254,7 @@ static int rfm69_reset(int pin) {
     return 0;
 }
 
-int rfm69_init(const struct rfm69_pins* pins) {
+struct rfm69_device* rfm69_init(const struct rfm69_pins *pins) {
     if(pins == NULL) { return -EINVAL; }
     if(pins->reset < 0) { return - EINVAL; }
     if(pins->spi_bus < 0 || pins->spi_bus > 1) {return -EINVAL;}
@@ -288,5 +288,5 @@ int rfm69_init(const struct rfm69_pins* pins) {
 
     printf("read_id: %02x\n", silicon);
 
-    return &self; 
+    return &self;
 }

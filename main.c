@@ -6,7 +6,7 @@
 #include <stdint.h>
 // #include <wiringPi.h>
 // #include <wiringPiSPI.h>
-#include <rfm69.h>
+#include "rfm69.h"
 
 #define SPI_BUS 0
 #define GPIO_RFM_RESET  33 /** GPIO33 */
