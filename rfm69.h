@@ -144,16 +144,7 @@ enum rfm69_modulatuion_shaping {
     RFM69_MODULATION_SHAPING_OOK_FCUT_2BR,
 };
 
-struct rfm69_config {
-    /**
-     * @brief Center frequency (Hz) to use for rx&tx
-     * @note The RFM69 transceiver module supports the 315 MHz,
-     * 433 MHz, 868 MHz, and 915 MHz bands.
-     * @warning The RFM69 isn't tuned for all of the supported bands. HopeRF
-     * makes different variants for each of the bands. Please ensure you are
-     * using the module that matches your desired center frequency.
-     */
-    uint32_t center_freq_hz;
+struct rfm69_fsk_config {
 
     /**
      * @brief The absolute difference (Hz) between the center frequency of
@@ -165,10 +156,23 @@ struct rfm69_config {
      */
     uint32_t freq_deviation_hz;
 
-    union {
-        enum rfm69_bandwidth_ook ook;
-        enum rfm69_bandwidth_fsk fsk;
-    } bw;
+    enum rfm69_bandwidth_fsk bw;
+};
+
+struct rfm69_ook_config {
+    enum rfm69_bandwidth_ook bw;
+};
+
+struct rfm69_config {
+    /**
+     * @brief Center frequency (Hz) to use for rx&tx
+     * @note The RFM69 transceiver module supports the 315 MHz,
+     * 433 MHz, 868 MHz, and 915 MHz bands.
+     * @warning The RFM69 isn't tuned for all of the supported bands. HopeRF
+     * makes different variants for each of the bands. Please ensure you are
+     * using the module that matches your desired center frequency.
+     */
+    uint32_t center_freq_hz;
 
     /**
      * @brief Bitrate: Rate at which bits are shifted out of the radio using
@@ -191,15 +195,13 @@ struct rfm69_config {
 
     int8_t cca_rssi;
     uint16_t cca_timeout_ms;
+
+
+    struct rfm69_fsk_config fsk;
+    struct rfm69_ook_config ook;
 };
 
 struct rfm69_pins {
-    /** @brief SPI bus number (0 or 1).
-     *  SPI0 (MOSI:GPIO38 MISO:GPIO35 CLK:GPIO40)
-     *  SPI1 (MOSI:GPIO10 MISO:GPIO09 CLK:GPIO11)
-     *  @note This parameter is required 
-    */
-    int spi_bus;
     int spi_cs;
     int reset;
     int dio0;
@@ -230,9 +232,10 @@ typedef void (*rfm69_rx_cb)(struct rfm69_device* dev, uint8_t* data, uint16_t si
 /**
  * @brief Initializes the transceiver and places it in low power mode.
  * @param pins
+ * @param spi SPI bus number (0 or 1).
  * @returns Pointer to the rfm69 device structure on success, otherwise NULL
  */
-struct rfm69_device* rfm69_init(const struct rfm69_pins* pins);
+struct rfm69_device* rfm69_init(const struct rfm69_pins* pins, int spi);
 
 /**
  * @brief Callback API for sending data
