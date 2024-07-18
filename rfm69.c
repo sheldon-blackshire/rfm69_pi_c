@@ -338,7 +338,7 @@ static int rfm69_set_frequency(struct rfm69_device *device, uint32_t hz) {
 struct rfm69_device* rfm69_init(const struct rfm69_pins *pins, int spi) {
     if(pins == NULL) { return NULL; }
     if(pins->reset < 0) { return NULL; }
-    if(pins->spi_bus < 0 || pins->spi_bus > 1) {return NULL;}
+    if(spi < 0 || spi > 1) {return NULL;}
 
     self.pins = *pins;
     self.spi = spi;
@@ -451,7 +451,7 @@ int rfm69_print_registers(struct rfm69_device* device) {
         { .address = RFM69_REG_71_TESTAFC, .por = 0x00 },
     };
 
-    for(int i = 0; i < sizeof(table) / sizeof(table[0])){
+    for(int i = 0; i < sizeof(table) / sizeof(table[0]); i++) {
         int ret = rfm69_read_reg(device, table[i].address, &table[i].value);
         if(ret < 0){
             continue;
