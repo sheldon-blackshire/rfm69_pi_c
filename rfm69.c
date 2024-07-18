@@ -300,7 +300,7 @@ static int rfm69_set_frequency_deviation(struct rfm69_device* device, uint16_t h
     }
 
     uint8_t lsb = (uint8_t)(f_dev_hz & 0xff);
-    ret = rfm69_write_reg(device, RFM69_REG_06_FDEVLSB, &lsb);
+    ret = rfm69_write_reg(device, RFM69_REG_06_FDEVLSB, lsb);
     if(ret < 0) {
         return ret;
     }
@@ -308,25 +308,26 @@ static int rfm69_set_frequency_deviation(struct rfm69_device* device, uint16_t h
     return 0;
 }
 
-static void rfm69_set_frequency(struct rfm69_device *device, uint32_t hz) {
+static int rfm69_set_frequency(struct rfm69_device *device, uint32_t hz) {
     if(device == NULL) { return -EINVAL; }
 
+    int ret;
     const uint32_t freq = (uint32_t)((double)hz / (double)RFM69_FSTEP);
 
     const uint8_t msb = (uint8_t)((freq >> 16) & 0xff);
-    rfm69_write_reg(device, RFM69_REG_07_FRFMSB, &msb);
+    ret = rfm69_write_reg(device, RFM69_REG_07_FRFMSB, msb);
     if(ret < 0) {
         return ret;
     }
 
     const uint8_t mid = (uint8_t)((freq >> 8) & 0xff);
-    rfm69_write_reg(device, RFM69_REG_08_FRFMID, &mid);
+    ret = rfm69_write_reg(device, RFM69_REG_08_FRFMID, mid);
     if(ret < 0) {
         return ret;
     }
 
     const uint8_t lsb = (uint8_t)(freq & 0xff);
-    rfm69_write_reg(device, RFM69_REG_09_FRFLSB, &lsb);
+    ret = rfm69_write_reg(device, RFM69_REG_09_FRFLSB, lsb);
     if(ret < 0) {
         return ret;
     }
@@ -344,7 +345,7 @@ struct rfm69_device* rfm69_init(const struct rfm69_pins *pins, int spi) {
 
     int ret = 0;
     wiringPiSetup();
-    wiringPiSPISetup(self.pins.spi_bus, RFM69_SPI_BUS_CLOCK_HZ);
+    wiringPiSPISetup(self.spi, RFM69_SPI_BUS_CLOCK_HZ);
     
     ret = wiringPiSetupGpio();
     if(ret < 0){
@@ -356,13 +357,13 @@ struct rfm69_device* rfm69_init(const struct rfm69_pins *pins, int spi) {
         printf("rfm69_reset %d\n", ret);
     }
 
-    ret = rfm69_standby();
+    ret = rfm69_standby(&self);
         if(ret < 0){
         printf("rfm69_standby %d\n", ret);
     }
 
     uint8_t silicon = 0;
-    ret = rfm69_read_reg(RFM69_REG_10_VERSION, &silicon);
+    ret = rfm69_read_reg(&self, RFM69_REG_10_VERSION, &silicon);
     if(ret < 0){
         printf("can't read id %d", ret);
     }
@@ -380,74 +381,74 @@ int rfm69_print_registers(struct rfm69_device* device) {
 
     struct rfm69_reg_status {
         uint8_t address;
-        uint8_t default;
+        uint8_t por;
         uint8_t value;
         uint8_t rw;
     };
 
     struct rfm69_reg_status table[] = {
-        { .address = RFM69_REG_00_FIFO, .default = 0x00 },
-        { .address = RFM69_REG_01_OPMODE, .default = 0x04 },
-        { .address = RFM69_REG_02_DATAMODUL, .default = 0x00 },
-        { .address = RFM69_REG_03_BITRATEMSB, .default = 0x1a },
-        { .address = RFM69_REG_04_BITRATELSB, .default = 0x0b },
-        { .address = RFM69_REG_05_FDEVMSB, .default = 0x00 },
-        { .address = RFM69_REG_06_FDEVLSB, .default = 0x52 },
-        { .address = RFM69_REG_07_FRFMSB, .default = 0xe4 },
-        { .address = RFM69_REG_08_FRFMID, .default = 0xc0 },
-        { .address = RFM69_REG_09_FRFLSB, .default = 0x00 },
-        { .address = RFM69_REG_0A_OSC1, .default = 0x41 },
-        { .address = RFM69_REG_0B_AFCCTRL, .default = 0x00 },
-        { .address = RFM69_REG_0C_RESERVED, .default = 0x02 },
-        { .address = RFM69_REG_0D_LISTEN1, .default = 0x92 },
-        { .address = RFM69_REG_0E_LISTEN2, .default = 0xf5 },
-        { .address = RFM69_REG_0F_LISTEN3, .default = 0x20 },
-        { .address = RFM69_REG_10_VERSION, .default = 0x24 },
-        { .address = RFM69_REG_11_PALEVEL, .default = 0x9f },
-        { .address = RFM69_REG_12_PARAMP, .default = 0x09 },
-        { .address = RFM69_REG_13_OCP, .default = 0x1a },
-        { .address = RFM69_REG_14_RESERVED, .default = 0x40 },
-        { .address = RFM69_REG_15_RESERVED, .default = 0xb0 },
-        { .address = RFM69_REG_16_RESERVED, .default = 0x7b },
-        { .address = RFM69_REG_17_RESERVED, .default = 0x9b },
-        { .address = RFM69_REG_18_LNA, .default = 0x08 },
-        { .address = RFM69_REG_19_RXBW, .default = 0x86 },
-        { .address = RFM69_REG_1A_AFCBW, .default = 0x8a },
-        { .address = RFM69_REG_1B_OOKPEAK, .default = 0x40 },
-        { .address = RFM69_REG_1C_OOKAVG, .default = 0x80 },
-        { .address = RFM69_REG_1D_OOKFIX, .default = 0x06 },
-        { .address = RFM69_REG_1E_AFCFEI, .default = 0x10 },
-        { .address = RFM69_REG_1F_AFCMSB, .default = 0x00 },
-        { .address = RFM69_REG_20_AFCLSB, .default = 0x00 },
-        { .address = RFM69_REG_21_FEIMSB, .default = 0x00 },
-        { .address = RFM69_REG_22_FEILSB, .default = 0x00 },
-        { .address = RFM69_REG_23_RSSICONFIG, .default = 0x02 },
-        { .address = RFM69_REG_24_RSSIVALUE, .default = 0xff },
-        { .address = RFM69_REG_25_DIOMAPPING1, .default = 0x00 },
-        { .address = RFM69_REG_26_DIOMAPPING2, .default = 0x05 },
-        { .address = RFM69_REG_27_IRQFLAGS1, .default = 0x80 },
-        { .address = RFM69_REG_28_IRQFLAGS2, .default = 0x00 },
-        { .address = RFM69_REG_29_RSSITHRESH, .default = 0xff },
-        { .address = RFM69_REG_2A_RXTIMEOUT1, .default = 0x00 },
-        { .address = RFM69_REG_2B_RXTIMEOUT2, .default = 0x00 },
-        { .address = RFM69_REG_2C_PREAMBLEMSB, .default = 0x00 },
-        { .address = RFM69_REG_2D_PREAMBLELSB, .default = 0x03 },
-        { .address = RFM69_REG_2E_SYNCCONFIG, .default = 0x98 },
-        { .address = RFM69_REG_2F_SYNCVALUE1, .default = 0x00 },
-        { .address = RFM69_REG_38_PAYLOADLENGTH, .default = 0x40 },
-        { .address = RFM69_REG_39_NODEADRS, .default = 0x00 },
-        { .address = RFM69_REG_3A_BROADCASTADRS, .default = 0x00 },
-        { .address = RFM69_REG_3B_AUTOMODES, .default = 0x00 },
-        { .address = RFM69_REG_3C_FIFOTHRESH, .default = 0xf0 },
-        { .address = RFM69_REG_3D_PACKETCONFIG2, .default = 0x02 },
-        { .address = RFM69_REG_3E_AESKEY1, .default = 0x00 },
-        { .address = RFM69_REG_4E_TEMP1, .default = 0x01 },
-        { .address = RFM69_REG_4F_TEMP2, .default = 0x00 },
-        { .address = RFM69_REG_58_TESTLNA, .default = 0x1b },
-        { .address = RFM69_REG_5A_TESTPA1, .default = 0x55 },
-        { .address = RFM69_REG_5C_TESTPA2, .default = 0x70 },
-        { .address = RFM69_REG_6F_TESTDAGC, .default = 0x00 },
-        { .address = RFM69_REG_71_TESTAFC, .default = 0x00 },
+        { .address = RFM69_REG_00_FIFO, .por = 0x00 },
+        { .address = RFM69_REG_01_OPMODE, .por = 0x04 },
+        { .address = RFM69_REG_02_DATAMODUL, .por = 0x00 },
+        { .address = RFM69_REG_03_BITRATEMSB, .por = 0x1a },
+        { .address = RFM69_REG_04_BITRATELSB, .por = 0x0b },
+        { .address = RFM69_REG_05_FDEVMSB, .por = 0x00 },
+        { .address = RFM69_REG_06_FDEVLSB, .por = 0x52 },
+        { .address = RFM69_REG_07_FRFMSB, .por = 0xe4 },
+        { .address = RFM69_REG_08_FRFMID, .por = 0xc0 },
+        { .address = RFM69_REG_09_FRFLSB, .por = 0x00 },
+        { .address = RFM69_REG_0A_OSC1, .por = 0x41 },
+        { .address = RFM69_REG_0B_AFCCTRL, .por = 0x00 },
+        { .address = RFM69_REG_0C_RESERVED, .por = 0x02 },
+        { .address = RFM69_REG_0D_LISTEN1, .por = 0x92 },
+        { .address = RFM69_REG_0E_LISTEN2, .por = 0xf5 },
+        { .address = RFM69_REG_0F_LISTEN3, .por = 0x20 },
+        { .address = RFM69_REG_10_VERSION, .por = 0x24 },
+        { .address = RFM69_REG_11_PALEVEL, .por = 0x9f },
+        { .address = RFM69_REG_12_PARAMP, .por = 0x09 },
+        { .address = RFM69_REG_13_OCP, .por = 0x1a },
+        { .address = RFM69_REG_14_RESERVED, .por = 0x40 },
+        { .address = RFM69_REG_15_RESERVED, .por = 0xb0 },
+        { .address = RFM69_REG_16_RESERVED, .por = 0x7b },
+        { .address = RFM69_REG_17_RESERVED, .por = 0x9b },
+        { .address = RFM69_REG_18_LNA, .por = 0x08 },
+        { .address = RFM69_REG_19_RXBW, .por = 0x86 },
+        { .address = RFM69_REG_1A_AFCBW, .por = 0x8a },
+        { .address = RFM69_REG_1B_OOKPEAK, .por = 0x40 },
+        { .address = RFM69_REG_1C_OOKAVG, .por = 0x80 },
+        { .address = RFM69_REG_1D_OOKFIX, .por = 0x06 },
+        { .address = RFM69_REG_1E_AFCFEI, .por = 0x10 },
+        { .address = RFM69_REG_1F_AFCMSB, .por = 0x00 },
+        { .address = RFM69_REG_20_AFCLSB, .por = 0x00 },
+        { .address = RFM69_REG_21_FEIMSB, .por = 0x00 },
+        { .address = RFM69_REG_22_FEILSB, .por = 0x00 },
+        { .address = RFM69_REG_23_RSSICONFIG, .por = 0x02 },
+        { .address = RFM69_REG_24_RSSIVALUE, .por = 0xff },
+        { .address = RFM69_REG_25_DIOMAPPING1, .por = 0x00 },
+        { .address = RFM69_REG_26_DIOMAPPING2, .por = 0x05 },
+        { .address = RFM69_REG_27_IRQFLAGS1, .por = 0x80 },
+        { .address = RFM69_REG_28_IRQFLAGS2, .por = 0x00 },
+        { .address = RFM69_REG_29_RSSITHRESH, .por = 0xff },
+        { .address = RFM69_REG_2A_RXTIMEOUT1, .por = 0x00 },
+        { .address = RFM69_REG_2B_RXTIMEOUT2, .por = 0x00 },
+        { .address = RFM69_REG_2C_PREAMBLEMSB, .por = 0x00 },
+        { .address = RFM69_REG_2D_PREAMBLELSB, .por = 0x03 },
+        { .address = RFM69_REG_2E_SYNCCONFIG, .por = 0x98 },
+        { .address = RFM69_REG_2F_SYNCVALUE1, .por = 0x00 },
+        { .address = RFM69_REG_38_PAYLOADLENGTH, .por = 0x40 },
+        { .address = RFM69_REG_39_NODEADRS, .por = 0x00 },
+        { .address = RFM69_REG_3A_BROADCASTADRS, .por = 0x00 },
+        { .address = RFM69_REG_3B_AUTOMODES, .por = 0x00 },
+        { .address = RFM69_REG_3C_FIFOTHRESH, .por = 0xf0 },
+        { .address = RFM69_REG_3D_PACKETCONFIG2, .por = 0x02 },
+        { .address = RFM69_REG_3E_AESKEY1, .por = 0x00 },
+        { .address = RFM69_REG_4E_TEMP1, .por = 0x01 },
+        { .address = RFM69_REG_4F_TEMP2, .por = 0x00 },
+        { .address = RFM69_REG_58_TESTLNA, .por = 0x1b },
+        { .address = RFM69_REG_5A_TESTPA1, .por = 0x55 },
+        { .address = RFM69_REG_5C_TESTPA2, .por = 0x70 },
+        { .address = RFM69_REG_6F_TESTDAGC, .por = 0x00 },
+        { .address = RFM69_REG_71_TESTAFC, .por = 0x00 },
     };
 
     for(int i = 0; i < sizeof(table) / sizeof(table[0])){
@@ -455,7 +456,7 @@ int rfm69_print_registers(struct rfm69_device* device) {
         if(ret < 0){
             continue;
         }
-        printf("REG: %02x VALUE: %02x DEFAULT: %02x\n", table[i].address, table[i].value, &table[i].default);
+        printf("REG: %02x VALUE: %02x POR: %02x\n", table[i].address, table[i].value, &table[i].por);
     }
 
     return 0;
