@@ -219,7 +219,7 @@ static int rfm69_fifo_transaction(const struct rfm69_device* device, uint8_t* bu
         size = RFM69_MAX_FIFO_BYTES + 1; 
     }
 
-    int ret = wiringPiSPIDataRW(device->spi, buffer, sizeof(buffer) / sizeof(buffer[0]));
+    int ret = wiringPiSPIDataRW(device->spi, buffer, size);
     if(ret < 0) {
         return ret;
     }
@@ -920,10 +920,12 @@ static void rfm69_dio3_callback(struct rfm69_device* device) {
 
 /**  */
 static void rfm69_dio0_callback_0_0(void) {
+    printf("rfm69_dio0_callback_0_0\n");
     rfm69_dio0_callback(&self);
 }
 
 static void rfm69_dio3_callback_0_0(void) {
+    printf("rfm69_dio3_callback_0_0\n");
     rfm69_dio3_callback(&self);
 }
 

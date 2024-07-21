@@ -52,5 +52,7 @@ int main() {
         }        
     }, main_on_rfm69_rx);
 
+    while(1);
+
     return 0;
 }
