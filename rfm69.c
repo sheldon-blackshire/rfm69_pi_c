@@ -10,6 +10,7 @@
 #include "rfm69_priv.h"
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
 
@@ -741,7 +742,7 @@ static int rfm69_set_power_level(const struct rfm69_device* device, int8_t dbm) 
             rfm69_set_over_current_protection(device, true, 100);
         } else if (dbm <= 20) {
             int paLevel = (RFM69_PALEVEL_PA1ON | RFM69_PALEVEL_PA2ON) | ((dbm + 11) & RFM69_PALEVEL_OUTPUTPOWER);
-            rfm69_write_reg(device, RFM69_REG_11_PALEVEL, &paLevel);
+            rfm69_write_reg(device, RFM69_REG_11_PALEVEL, paLevel);
             rfm69_set_high_power(device, true);
             rfm69_set_over_current_protection(device, false, 120);
         }
@@ -800,7 +801,7 @@ static int rfm69_set_sync_words(const struct rfm69_device* device, const uint8_t
     sync_config |= RFM69_SYNCCONFIG_SYNCON;
     sync_config &= ~RFM69_SYNCCONFIG_SYNCSIZE;
     sync_config |= (length - 1) << 3;
-    ret = rfm69_write_reg(device, RFM69_REG_2E_SYNCCONFIG, &sync_config, 1);
+    ret = rfm69_write_reg(device, RFM69_REG_2E_SYNCCONFIG, sync_config);
     if(ret < 0) {
         return -EIO;
     }
@@ -828,7 +829,7 @@ static int rfm69_set_sync_words(const struct rfm69_device* device, const uint8_t
 // }
 
 
-static void rfm69_calibraterc_osc(struct rfm69_device* device) {
+static int rfm69_calibraterc_osc(struct rfm69_device* device) {
 
     /* RC calibration must be triggered in Standby mode. */
     int ret = rfm69_standby(device);
@@ -857,7 +858,7 @@ static void rfm69_calibraterc_osc(struct rfm69_device* device) {
     }
 }
 
-static void rfm69_dio0_callback(struct rfm69_devie* device) {
+static void rfm69_dio0_callback(struct rfm69_device* device) {
     if(device == NULL) { return; }
     
     int ret;
@@ -891,7 +892,7 @@ static void rfm69_dio0_callback(struct rfm69_devie* device) {
     }
 }
 
-static void rfm69_dio3_callback(struct rfm69_devie* device) {
+static void rfm69_dio3_callback(struct rfm69_device* device) {
     if(device == NULL) { return; }
     
     switch(device->state) {
@@ -901,12 +902,12 @@ static void rfm69_dio3_callback(struct rfm69_devie* device) {
         case RFM69_STATE_RX:
 
             switch(device->dio.pm_dio3_rx) {
-                case RFM69_PM_DIO0_RX_FIFO_FULL: break;
-                case RFM69_PM_DIO0_RX_RSSI: break;                    
-                case RFM69_PM_DIO0_RX_SYNC_ADDRESS: 
+                case RFM69_PM_DIO3_RX_FIFO_FULL: break;
+                case RFM69_PM_DIO3_RX_RSSI: break;                    
+                case RFM69_PM_DIO3_RX_SYNC_ADDRESS: 
                     /** @todo read rssi  */
                     break;
-                case RFM69_PM_DIO0_RX_RSSI: break;
+                case RFM69_PM_DIO3_RX_PLL_LOCK: break;
                 default: return;                    
             }
 
@@ -986,10 +987,10 @@ struct rfm69_device* rfm69_init(const struct rfm69_pins *pins, int spi) {
      */
 
     if(self.pins.dio0 >= 0) {
-        wiringPiISR(self.pins.dio0, INT_EDGE_RISING, rfm69_dio0_isr_0_0);
+        wiringPiISR(self.pins.dio0, INT_EDGE_RISING, rfm69_dio0_callback_0_0);
     }
     if(self.pins.dio3 >= 0) {
-        wiringPiISR(self.pins.dio3, INT_EDGE_RISING, rfm69_dio3_isr_0_0);
+        wiringPiISR(self.pins.dio3, INT_EDGE_RISING, rfm69_dio3_callback_0_0);
     }
 
     printf("read_id: %02x\n", silicon);
@@ -1021,6 +1022,19 @@ int rfm69_receive(struct rfm69_device* device,
     }else {
         /** @todo ook settings */
     }
+
+    /** Do some default packet configuration, @todo make these configurable */
+    rfm69_set_packet_config1(device,
+        RFM69_PACKETCONFIG1_PACKETFORMAT_FIXED, RFM69_PACKETCONFIG1_ENCODING_NONE,
+        RFM69_PACKETCONFIG1_CRC_OFF, RFM69_PACKETCONFIG1_FILTER_BAD_CRC_ON,
+        RFM69_PACKETCONFIG1_ADDRESSFILTERING_NONE);
+
+    rfm69_set_packet_config2(device,
+        RFM69_PACKETCONFIG2_INTERPACKETRXDELAY,
+        RFM69_PACKETCONFIG2_DO_RESTART_RX,
+        RFM69_PACKETCONFIG2_AUTO_RX_RESTART_OFF,
+        RFM69_PACKETCONFIG2_AES_OFF);
+
 
     rfm69_set_preamble_length(device, config->preamble_length);
     rfm69_set_frequency(device, config->center_freq_hz);
