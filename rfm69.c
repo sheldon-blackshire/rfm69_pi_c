@@ -92,7 +92,7 @@ struct rfm69_device_dio {
 struct rfm69_device {
     int pa_boost;
     int tx_power_max_dbm;
-    uint8_t payload[RFM69_MAX_FIFO_BYTES];
+    uint8_t payload[RFM69_MAX_FIFO_BYTES + 1];
     int payload_length;
     int8_t payload_rssi;
 
@@ -872,6 +872,7 @@ static void rfm69_dio0_callback(struct rfm69_device* device) {
             switch(device->dio.pm_dio0_rx) {
                 case RFM69_PM_DIO0_RX_CRC_OK: break;
                 case RFM69_PM_DIO0_RX_PAYLOAD_READY:
+                    device->payload[0] = RFM69_READ_ADDRESS(RFM69_REG_00_FIFO);
                     ret = rfm69_fifo_transaction(device, device->payload, device->payload_length);
                     if(ret < 0){
                         printf("error reading fifo %d\n", ret);
@@ -905,7 +906,9 @@ static void rfm69_dio3_callback(struct rfm69_device* device) {
                 case RFM69_PM_DIO3_RX_FIFO_FULL: break;
                 case RFM69_PM_DIO3_RX_RSSI: break;                    
                 case RFM69_PM_DIO3_RX_SYNC_ADDRESS: 
-                    /** @todo read rssi  */
+                    rfm69_read_reg(device, RFM69_REG_24_RSSIVALUE, (uint8_t*)&device->payload_rssi);
+                    device->payload_rssi >>= 1;
+                    device->payload_rssi *= -1;
                     break;
                 case RFM69_PM_DIO3_RX_PLL_LOCK: break;
                 default: return;                    
