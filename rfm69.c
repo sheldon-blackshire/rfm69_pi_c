@@ -874,7 +874,7 @@ static void rfm69_dio0_callback(struct rfm69_device* device) {
                 case RFM69_PM_DIO0_RX_CRC_OK: break;
                 case RFM69_PM_DIO0_RX_PAYLOAD_READY:
                     device->payload[0] = RFM69_READ_ADDRESS(RFM69_REG_00_FIFO);
-                    ret = rfm69_fifo_transaction(device, device->payload, device->payload_length);
+                    ret = rfm69_fifo_transaction(device, device->payload, device->payload_length + 1);
                     if(ret < 0){
                         printf("error reading fifo %d\n", ret);
                     }
