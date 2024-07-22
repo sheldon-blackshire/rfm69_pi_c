@@ -25,8 +25,13 @@ add_executable(app main.c)
 # Link libraries
 target_link_libraries(app ${WIRINGPI_LIBRARIES})
 
+# Link GCC Math library
+target_link_libraries(app m)
+
 # Add souce files to the executable target <app>
 target_sources(app PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/rfm69.c
 )
+
+
 

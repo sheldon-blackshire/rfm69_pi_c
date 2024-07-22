@@ -55,6 +55,8 @@ int main() {
 
     rfm69_receive(dev, &conf, main_on_rfm69_rx);
 
+    rfm69_print_registers(dev);
+
     while(1);
 
     return 0;

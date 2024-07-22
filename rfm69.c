@@ -934,12 +934,12 @@ static void rfm69_dio3_callback(struct rfm69_device* device) {
 
 /**  */
 static void rfm69_dio0_callback_0_0(void) {
-    printf("rfm69_dio0_callback_0_0\n");
+    // printf("rfm69_dio0_callback_0_0\n");
     rfm69_dio0_callback(&self);
 }
 
 static void rfm69_dio3_callback_0_0(void) {
-    printf("rfm69_dio3_callback_0_0\n");
+    // printf("rfm69_dio3_callback_0_0\n");
     rfm69_dio3_callback(&self);
 }
 
