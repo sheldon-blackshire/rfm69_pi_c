@@ -893,6 +893,18 @@ static void rfm69_dio0_callback(struct rfm69_device* device) {
     }
 }
 
+static int8_t rfm69_get_rssi(struct rfm69_device* device) {
+    if(device == NULL) {return EINVAL;}
+
+    uint8_t raw;
+    int ret = rfm69_read_reg(device, RFM69_REG_24_RSSIVALUE, &raw);
+    if(ret < 0){
+        return EIO;
+    }
+
+    return -(raw / 2);
+}
+
 static void rfm69_dio3_callback(struct rfm69_device* device) {
     if(device == NULL) { return; }
     
@@ -906,9 +918,7 @@ static void rfm69_dio3_callback(struct rfm69_device* device) {
                 case RFM69_PM_DIO3_RX_FIFO_FULL: break;
                 case RFM69_PM_DIO3_RX_RSSI: break;                    
                 case RFM69_PM_DIO3_RX_SYNC_ADDRESS: 
-                    rfm69_read_reg(device, RFM69_REG_24_RSSIVALUE, (uint8_t*)&device->payload_rssi);
-                    device->payload_rssi >>= 1;
-                    device->payload_rssi *= -1;
+                    device->payload_rssi = rfm69_get_rssi(device);
                     break;
                 case RFM69_PM_DIO3_RX_PLL_LOCK: break;
                 default: return;                    
