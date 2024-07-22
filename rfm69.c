@@ -10,6 +10,7 @@
 #include "rfm69_priv.h"
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 #include <stdbool.h>
 #include <wiringPi.h>
 #include <wiringPiSPI.h>
@@ -372,7 +373,7 @@ static int rfm69_set_fsk_frequency_deviation(const struct rfm69_device* device, 
     if(device == NULL) { return -EINVAL; }
 
     int ret;
-    const uint16_t f_dev_hz = (uint16_t)((double)hz / (double)RFM69_FSTEP);
+    const uint16_t f_dev_hz = (uint16_t)round((double)hz / (double)RFM69_FSTEP);
 
     uint8_t msb = (uint8_t)((f_dev_hz >> 8) & 0xff);
     ret = rfm69_write_reg(device, RFM69_REG_05_FDEVMSB, msb);
@@ -1159,7 +1160,7 @@ int rfm69_print_registers(struct rfm69_device* device) {
         if(ret < 0){
             continue;
         }
-        printf("REG: %02x VALUE: %02x POR: %02x\n", table[i].address, table[i].value, &table[i].por);
+        printf("REG: %02x VALUE: %02x POR: %02x\n", table[i].address, table[i].value, table[i].por);
     }
 
     return 0;
