@@ -809,7 +809,7 @@ static int rfm69_set_sync_words(const struct rfm69_device* device, const uint8_t
 
     uint8_t reg_i = RFM69_REG_2F_SYNCVALUE1;
     for(int i = 0; i < length; i++) {
-        ret = rfm69_write_reg(device, reg_i, sync_words[i]);
+        ret = rfm69_write_reg(device, reg_i + i, sync_words[i]);
         if(ret < 0) {
             return -EIO;
         }
