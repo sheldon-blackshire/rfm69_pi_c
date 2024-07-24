@@ -1,20 +1,28 @@
-#include <stddef.h>
-#include <stdio.h>
+#include "rfm69.h"
 #include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
-#include "rfm69.h"
+
+/** Socket Headers */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
 
 #define SPI_BUS 0
-#define GPIO_RFM_RESET  33 /** GPIO33 */
-#define GPIO_RFM_DIO0   37
-#define GPIO_RFM_DIO3   39
-#define GPIO_RFM_NSS     8 /** Chip Select */
-#define GPIO_RFM_MISO    9
-#define GPIO_RFM_MOSI   10
-#define GPIO_RFM_SCK    11
+#define GPIO_RFM_RESET 33 /** GPIO33 */
+#define GPIO_RFM_DIO0 37
+#define GPIO_RFM_DIO3 39
+#define GPIO_RFM_NSS 8 /** Chip Select */
+#define GPIO_RFM_MISO 9
+#define GPIO_RFM_MOSI 10
+#define GPIO_RFM_SCK 11
 
+int g_socket = -1;
+int g_port = -1;
 
 struct rfm69_config conf = {
     .center_freq_hz = 434000000,
@@ -29,17 +37,57 @@ struct rfm69_config conf = {
     .payload_length = 4,
     .fsk = {
         .freq_deviation_hz = 25000,
-        .bw = RFM69_BW_FSK_50_0_khz
-    } 
+        .bw = RFM69_BW_FSK_50_0_khz }
 };
 
+static int main_udp_broadcast_init(int port) {
+
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) {
+        printf("socket error");
+        return -1;
+    }
+
+    int yes = 1;
+    int ret = setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char*)&yes, sizeof(yes));
+    if (ret == -1) {
+        perror("setsockopt error");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int main_udp_broadcast_message(const char* message int port) {
+    if(message == NULL) { return -EINVAL; }
+    if(port < 0) { return -EINVAL; }
+
+    struct sockaddr_in broadcast_addr;
+    memset((void*)&broadcast_addr, 0, sizeof(struct sockaddr_in));
+
+    broadcast_addr.sin_family = AF_INET;
+    broadcast_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+    broadcast_addr.sin_port = htons(port);
+
+    return sendto(sock, message, strlen(message), 0, (struct sockaddr*)&broadcast_addr, sizeof(struct sockaddr_in));
+}
+
 void main_on_rfm69_rx(struct rfm69_device* dev, uint8_t* data, uint16_t size, int16_t rssi) {
-    printf("%02x%02x%02x%02x,%d\n", data[0], data[1], data[2], data[3], rssi);
+    char buffer[64] = {0};
+    snprintf(buffer, 64,"%02x%02x%02x%02x,%d\n", data[0], data[1], data[2], data[3], rssi);
+    main_udp_broadcast_message(buffer, g_port);
     rfm69_receive(dev, &conf, main_on_rfm69_rx);
 }
 
 int main() {
+
     printf("rfm69.c -> main()\n");
+
+    g_port = 12345;
+    g_socket = main_udp_broadcast_init(g_port);
+    if(g_socket < 0) {
+        printf("Error establishing socket %d\n", g_socket);
+    }
 
     struct rfm69_pins pins = {
         .reset = GPIO_RFM_RESET,
@@ -49,15 +97,16 @@ int main() {
     };
 
     struct rfm69_device* dev = rfm69_init(&pins, SPI_BUS);
-    if(dev == NULL){
+    if (dev == NULL) {
         printf("rfm69_init fail\n");
     }
 
     rfm69_receive(dev, &conf, main_on_rfm69_rx);
 
-    rfm69_print_registers(dev);
+    // rfm69_print_registers(dev);
 
-    while(1);
+    while (1)
+        ;
 
     return 0;
 }
