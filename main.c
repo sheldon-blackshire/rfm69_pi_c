@@ -58,10 +58,11 @@ static int main_udp_broadcast_init(int port) {
     return 0;
 }
 
-static int main_udp_broadcast_message(const char* message int port) {
+static int main_udp_broadcast_message(const char* message, int socket, int port) {
     if(message == NULL) { return -EINVAL; }
+    if(socket  <0) { return -EINVAL;}
     if(port < 0) { return -EINVAL; }
-
+    
     struct sockaddr_in broadcast_addr;
     memset((void*)&broadcast_addr, 0, sizeof(struct sockaddr_in));
 
@@ -69,13 +70,13 @@ static int main_udp_broadcast_message(const char* message int port) {
     broadcast_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
     broadcast_addr.sin_port = htons(port);
 
-    return sendto(sock, message, strlen(message), 0, (struct sockaddr*)&broadcast_addr, sizeof(struct sockaddr_in));
+    return sendto(socket, message, strlen(message), 0, (struct sockaddr*)&broadcast_addr, sizeof(struct sockaddr_in));
 }
 
 void main_on_rfm69_rx(struct rfm69_device* dev, uint8_t* data, uint16_t size, int16_t rssi) {
     char buffer[64] = {0};
     snprintf(buffer, 64,"%02x%02x%02x%02x,%d\n", data[0], data[1], data[2], data[3], rssi);
-    main_udp_broadcast_message(buffer, g_port);
+    main_udp_broadcast_message(buffer, g_socket, g_port);
     rfm69_receive(dev, &conf, main_on_rfm69_rx);
 }
 
