@@ -21,6 +21,8 @@
 #define GPIO_RFM_MOSI 10
 #define GPIO_RFM_SCK 11
 
+#define IP_ADDRESS_UDP "127.0.0.1"
+
 int g_socket = -1;
 int g_port = -1;
 
@@ -67,8 +69,8 @@ static int main_udp_broadcast_message(const char* message, int socket, int port)
     memset((void*)&broadcast_addr, 0, sizeof(struct sockaddr_in));
 
     broadcast_addr.sin_family = AF_INET;
-    broadcast_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
     broadcast_addr.sin_port = htons(port);
+    inet_pton(AF_INET,"127.0.0.1", &broadcast_addr.sin_addr);
 
     return sendto(socket, message, strlen(message), 0, (struct sockaddr*)&broadcast_addr, sizeof(struct sockaddr_in));
 }
@@ -85,10 +87,12 @@ void main_on_rfm69_rx(struct rfm69_device* dev, uint8_t* data, uint16_t size, in
 
 int main() {
 
-    printf("rfm69.c -> main()\n");
-
     g_port = 12345;
+
+    printf("rfm69_pi_c: udp_relay %s:%d\n", IP_ADDRESS_UDP, g_port);
+
     g_socket = main_udp_broadcast_init(g_port);
+
     if(g_socket < 0) {
         printf("Error establishing socket %d\n", g_socket);
     }
